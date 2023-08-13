@@ -41,7 +41,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-TIM_HandleTypeDef htim1;
+ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim5;
 
@@ -61,7 +61,7 @@ uint32_t timestamp = 0;
 
 static enum {Init, Delay, Accerelation, Constant, Decelelation, Steadystate}state = Init;
 uint32_t traject_time = 0;
-float theta = 0.1;
+float theta = M_PI;
 float t_acc = 1.0;
 float t_constant = 2.0;
 float path = 0;
@@ -402,6 +402,7 @@ void SystemClock_Config(void)
   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
@@ -418,6 +419,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
   /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
@@ -709,8 +711,8 @@ float PID_Controller_Innerloop(float Error1)
 	static float Output1[2] = {0};
 	static float error1[3] = {0};
 	float Sampletime = 1/100.0 ;
-	float Kp1 = 1.9899 ;
-	float Ki1 = Sampletime * (7.596*1.9899);
+	float Kp1 = 0.82586 ;
+	float Ki1 = Sampletime * (0.82586 * 9.92);
 	float Kd1 = 0.0 / Sampletime;
 
 	error1[0] = Error1;
@@ -727,9 +729,9 @@ float PID_Controller_Outerloop(float Error1)
 	static float Output2[2] = {0};
 	static float error2[3] = {0};
 	float Sampletime = 1/100.0 ;
-	float Kp2 = 18.26*1.5851 ;
+	float Kp2 = 0.2381*1.647 ;
 	float Ki2 = Sampletime * 0.0;
-	float Kd2 = 1.5851/Sampletime;
+	float Kd2 = 0.2381/Sampletime;
 
 	error2[0] = Error1;
 	Output2[0] = Output2[1] + ( (Kp2+Ki2+Kd2)*error2[0] ) - ( (Kp2 + (2*Kd2))*error2[1] ) + (Kd2*error2[2]);
@@ -774,7 +776,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	{
 		timestamp = HAL_GetTick();
 		storetime[0] = HAL_GetTick();
-		RadRel = (TIM2->CNT/3999.0)*(2*M_PI);
+		RadRel = (TIM2->CNT/8191.0)*(2*M_PI);
 		Position[0] = RadRel;
 		Velocity = (Position[0] - Position[1])/(10.0/1000.0);
 		switch (state)
@@ -811,13 +813,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		Error_theta = path - RadRel;
 		velo_desire = PID_Controller_Outerloop(Error_theta);
 		Velocity_Kalman = KalmanFilter(RadRel);
-		//Error_velocity = velo_desire - Velocity;
+		//Error_velocity = velo_desire + velo_desire - Velocity;
 		Error_velocity = v_profile + velo_desire - Velocity_Kalman;
 		voltage = PID_Controller_Innerloop(Error_velocity);
 
 
 
-		Drivemotor((voltage/12)*5000.0);
+		Drivemotor(((voltage)/12)*4999.0);
 
 
 
@@ -861,4 +863,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
